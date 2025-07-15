@@ -1,14 +1,28 @@
 ---
-import * as Client from '../../.stellar/contract-ids/hello_world';
-import { Networks } from '@stellar/stellar-sdk';
+import contractData from '../../.stellar/contract-ids/hello_world.json';
+import { Networks, SorobanRpc, Contract, xdr } from '@stellar/stellar-sdk';
 
-const contract = new Client.Client({
-   networkPassphrase: Networks.TESTNET,
-   rpcUrl: 'https://soroban-testnet.stellar.org:443'
+// Get the contract ID for testnet
+const contractId = contractData.ids["Test SDF Network ; September 2015"];
+
+// Create Soroban RPC client
+const server = new SorobanRpc.Server("https://soroban-testnet.stellar.org:443");
+
+// Create contract instance
+const contract = new Contract(contractId);
+
+// Call the hello function from your smart contract
+const result = await server.simulateTransaction(async () => {
+  // This matches your Rust contract's hello function which takes a String parameter
+  return contract.call("hello", "Devs!");
 });
 
-const { result } = await contract.hello({to: "Devs!"});
-const greeting = result.join(" ");
+// Extract the vector of strings from the result
+// The contract returns vec![String::from_str(&env, "Hello"), to]
+const resultValues = result.results[0].xdr;
+const decoded = SorobanRpc.Api.xdrFromBase64(resultValues);
+const vec = decoded.value().vec();
+const greeting = vec.map(item => item.str().toString()).join(" ");
 ---
 
 <h1>{greeting}</h1>
